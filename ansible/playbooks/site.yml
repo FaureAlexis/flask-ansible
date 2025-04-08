@@ -1,0 +1,49 @@
+---
+- name: Deploy Flask Todo Application
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+- name: Configure database servers
+  hosts: dbservers
+  become: true
+  roles:
+    - role: common
+    - role: mariadb
+
+- name: Configure web servers
+  hosts: webservers
+  become: true
+  roles:
+    - role: common
+    - role: flask-app
+    - role: nginx
+
+  post_tasks:
+    - name: Ensure application is running
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+      register: app_status
+      
+    - name: Check application status
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        return_content: yes
+      register: health_check
+      until: health_check.status == 200
+      retries: 5
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display deployment status
+      debug:
+        msg: "Application deployed successfully and responding to health checks"
+      when: health_check.status == 200 

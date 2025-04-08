@@ -1,0 +1,68 @@
+---
+- name: Deploy Flask Todo Application
+  hosts: webservers
+  become: true
+  
+  pre_tasks:
+    - name: Check application prerequisites
+      assert:
+        that:
+          - ansible_python_version is version('3.9', '>=')
+        msg: "Python 3.9 or higher is required"
+
+  tasks:
+    - name: Update application code
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_home }}/src"
+        version: "{{ repo_version }}"
+        force: yes
+      become_user: "{{ app_user }}"
+      notify: restart application
+
+    - name: Install/update dependencies
+      pip:
+        requirements: "{{ app_home }}/src/app/requirements.txt"
+        virtualenv: "{{ venv_path }}"
+        state: latest
+      become_user: "{{ app_user }}"
+      notify: restart application
+
+    - name: Run database migrations
+      command:
+        cmd: "{{ venv_path }}/bin/flask db upgrade"
+        chdir: "{{ app_home }}/src/app"
+      environment:
+        FLASK_APP: app.py
+        FLASK_ENV: "{{ flask_env }}"
+      become_user: "{{ app_user }}"
+      register: db_migrate
+      changed_when: "'No migrations to apply' not in db_migrate.stderr"
+
+    - name: Ensure application is running
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+
+  post_tasks:
+    - name: Check application health
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        return_content: yes
+      register: health_check
+      until: health_check.status == 200
+      retries: 5
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display deployment status
+      debug:
+        msg: "Application deployed successfully and responding to health checks"
+      when: health_check.status == 200
+
+  handlers:
+    - name: restart application
+      systemd:
+        name: "{{ app_name }}"
+        state: restarted 

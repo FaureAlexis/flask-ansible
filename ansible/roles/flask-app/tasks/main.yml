@@ -1,0 +1,69 @@
+---
+- name: Clone/update application repository
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ app_home }}/src"
+    version: "{{ repo_version }}"
+    force: yes
+  become_user: "{{ app_user }}"
+  notify: restart application
+
+- name: Install application dependencies
+  pip:
+    requirements: "{{ app_home }}/src/app/requirements.txt"
+    virtualenv: "{{ venv_path }}"
+    state: present
+  become_user: "{{ app_user }}"
+  notify: restart application
+
+- name: Create application environment file
+  template:
+    src: env.j2
+    dest: "{{ app_home }}/src/app/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0600'
+  notify: restart application
+
+- name: Create Gunicorn configuration
+  template:
+    src: gunicorn.conf.py.j2
+    dest: "{{ app_home }}/gunicorn.conf.py"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  notify: restart application
+
+- name: Create systemd service file
+  template:
+    src: todo.service.j2
+    dest: /etc/systemd/system/{{ app_name }}.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart application
+
+- name: Ensure log directory exists
+  file:
+    path: "{{ log_path }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Initialize/upgrade database
+  command:
+    cmd: "{{ venv_path }}/bin/flask db upgrade"
+    chdir: "{{ app_home }}/src/app"
+  environment:
+    FLASK_APP: app.py
+    FLASK_ENV: "{{ flask_env }}"
+  become_user: "{{ app_user }}"
+  register: db_migrate
+  changed_when: "'No migrations to apply' not in db_migrate.stderr"
+
+- name: Ensure application is running
+  systemd:
+    name: "{{ app_name }}"
+    state: started
+    enabled: yes 

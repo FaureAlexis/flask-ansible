@@ -1,0 +1,56 @@
+---
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: yes
+    create_home: yes
+    home: "{{ app_home }}"
+    shell: /bin/bash
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  with_items:
+    - "{{ app_home }}"
+    - "{{ log_path }}"
+    - "{{ backup_path }}"
+
+- name: Set up Python virtual environment
+  pip:
+    virtualenv: "{{ venv_path }}"
+    virtualenv_command: python3 -m venv
+    name: pip
+    state: latest
+  become_user: "{{ app_user }}"
+
+- name: Add virtualenv activation to .bashrc
+  lineinfile:
+    path: "{{ app_home }}/.bashrc"
+    line: "source {{ venv_path }}/bin/activate"
+    create: yes
+  become_user: "{{ app_user }}"
+
+- name: Configure logrotate
+  template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/{{ app_name }}
+    mode: '0644'
+
+- name: Set up backup directory
+  file:
+    path: "{{ backup_path }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0750' 

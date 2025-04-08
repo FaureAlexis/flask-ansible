@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block header %}Todo List{% endblock %}
+
+{% block content %}
+<div class="todo-container">
+    <form class="todo-form" method="POST" action="{{ url_for('add_todo') }}">
+        <div class="form-group">
+            <input type="text" name="title" placeholder="What needs to be done?" required>
+        </div>
+        <div class="form-group">
+            <textarea name="description" placeholder="Add a description (optional)"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Todo</button>
+    </form>
+
+    <div class="todo-list">
+        {% for todo in todos %}
+        <div class="todo-item {% if todo.completed %}completed{% endif %}" id="todo-{{ todo.id }}">
+            <div class="todo-content">
+                <h3>{{ todo.title }}</h3>
+                {% if todo.description %}
+                <p>{{ todo.description }}</p>
+                {% endif %}
+                <span class="todo-date">Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div class="todo-actions">
+                <button class="btn btn-toggle"
+                        hx-post="{{ url_for('toggle_todo', id=todo.id) }}"
+                        hx-swap="outerHTML"
+                        hx-target="#todo-{{ todo.id }}">
+                    {% if todo.completed %}Undo{% else %}Complete{% endif %}
+                </button>
+                <button class="btn btn-delete"
+                        hx-delete="{{ url_for('delete_todo', id=todo.id) }}"
+                        hx-target="#todo-{{ todo.id }}"
+                        hx-swap="outerHTML">
+                    Delete
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="todo-empty">
+            <p>No todos yet! Add one above.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

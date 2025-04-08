@@ -1,0 +1,17 @@
+[Unit]
+Description={{ app_name }} application
+After=network.target
+
+[Service]
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_home }}/src/app
+Environment="PATH={{ venv_path }}/bin"
+Environment="FLASK_APP=app.py"
+Environment="FLASK_ENV={{ flask_env }}"
+ExecStart={{ venv_path }}/bin/gunicorn --config {{ app_home }}/gunicorn.conf.py "app:create_app()"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target 

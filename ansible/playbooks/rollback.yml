@@ -1,0 +1,86 @@
+---
+- name: Rollback Flask Todo Application
+  hosts: webservers
+  become: true
+  vars_prompt:
+    - name: rollback_version
+      prompt: "Enter the version/commit to rollback to"
+      private: no
+
+  tasks:
+    - name: Get current version
+      command:
+        cmd: git rev-parse HEAD
+        chdir: "{{ app_home }}/src"
+      register: current_version
+      become_user: "{{ app_user }}"
+
+    - name: Backup current version
+      copy:
+        content: "{{ current_version.stdout }}"
+        dest: "{{ app_home }}/previous_version"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    - name: Stop application
+      systemd:
+        name: "{{ app_name }}"
+        state: stopped
+
+    - name: Backup database
+      command:
+        cmd: "/usr/local/bin/backup-database.sh"
+      when: inventory_hostname in groups['dbservers']
+
+    - name: Checkout previous version
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_home }}/src"
+        version: "{{ rollback_version }}"
+        force: yes
+      become_user: "{{ app_user }}"
+
+    - name: Install previous version dependencies
+      pip:
+        requirements: "{{ app_home }}/src/app/requirements.txt"
+        virtualenv: "{{ venv_path }}"
+        state: present
+      become_user: "{{ app_user }}"
+
+    - name: Run database migrations (downgrade)
+      command:
+        cmd: "{{ venv_path }}/bin/flask db downgrade"
+        chdir: "{{ app_home }}/src/app"
+      environment:
+        FLASK_APP: app.py
+        FLASK_ENV: "{{ flask_env }}"
+      become_user: "{{ app_user }}"
+      when: inventory_hostname in groups['dbservers']
+
+    - name: Start application
+      systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: yes
+
+  post_tasks:
+    - name: Check application health
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        return_content: yes
+      register: health_check
+      until: health_check.status == 200
+      retries: 5
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display rollback status
+      debug:
+        msg: "Application rolled back successfully to version {{ rollback_version }}"
+      when: health_check.status == 200
+
+    - name: Display rollback failure
+      debug:
+        msg: "Rollback failed! Application health check failed."
+      when: health_check.status != 200 

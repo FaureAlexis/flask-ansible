@@ -1,0 +1,69 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Create Nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_config_path }}/{{ app_name }}"
+    mode: '0644'
+  notify: reload nginx
+
+- name: Enable site configuration
+  file:
+    src: "{{ nginx_config_path }}/{{ app_name }}"
+    dest: "{{ nginx_enabled_path }}/{{ app_name }}"
+    state: link
+  notify: reload nginx
+
+- name: Remove default Nginx site
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ nginx_config_path }}/default"
+    - "{{ nginx_enabled_path }}/default"
+  notify: reload nginx
+
+- name: Create SSL directory
+  file:
+    path: "/etc/nginx/ssl"
+    state: directory
+    mode: '0755'
+  when: ssl_enabled | bool
+
+- name: Install Certbot
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+  when: ssl_enabled | bool
+
+- name: Obtain SSL certificate
+  command:
+    cmd: >
+      certbot certonly --nginx
+      -d {{ server_name }}
+      --non-interactive
+      --agree-tos
+      --email {{ ssl_admin_email }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ server_name }}"
+  when: ssl_enabled | bool
+  notify: reload nginx
+
+- name: Add Certbot renewal cron job
+  cron:
+    name: "Certbot renewal"
+    job: "certbot renew --quiet --no-self-upgrade"
+    special_time: daily
+  when: ssl_enabled | bool
+
+- name: Ensure Nginx is running
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes 

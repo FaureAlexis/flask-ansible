@@ -1,0 +1,32 @@
+import multiprocessing
+
+bind = "{{ gunicorn_bind }}"
+workers = {{ gunicorn_workers }}
+worker_class = "sync"
+worker_connections = 1000
+timeout = 30
+keepalive = 2
+
+# Logging
+accesslog = "{{ log_path }}/gunicorn-access.log"
+errorlog = "{{ log_path }}/gunicorn-error.log"
+loglevel = "{{ log_level | lower }}"
+
+# Process naming
+proc_name = "{{ app_name }}"
+
+# SSL
+keyfile = None
+certfile = None
+
+# Server mechanics
+daemon = False
+pidfile = "{{ app_home }}/gunicorn.pid"
+user = "{{ app_user }}"
+group = "{{ app_group }}"
+umask = 0o007
+tmp_upload_dir = None
+
+# Server hooks
+def on_starting(server):
+    server.log.info("Starting {{ app_name }} application") 

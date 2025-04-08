@@ -1,0 +1,38 @@
+---
+# Application settings
+app_name: todo
+app_user: todo
+app_group: todo
+app_home: /opt/todo
+app_env: production
+app_port: 8000
+
+# Python settings
+python_version: "3.9"
+venv_path: "{{ app_home }}/venv"
+
+# Git settings
+repo_url: https://github.com/yourusername/flask-todo-app.git
+repo_version: main
+
+# Gunicorn settings
+gunicorn_workers: "{{ ansible_processor_vcpus * 2 + 1 }}"
+gunicorn_bind: "127.0.0.1:{{ app_port }}"
+
+# Common packages
+common_packages:
+  - python3
+  - python3-pip
+  - python3-venv
+  - git
+  - nginx
+  - mariadb-server
+  - mariadb-client
+  - python3-mysqldb
+  - build-essential
+  - python3-dev
+  - default-libmysqlclient-dev
+
+# Nginx settings
+nginx_config_path: /etc/nginx/sites-available
+nginx_enabled_path: /etc/nginx/sites-enabled 

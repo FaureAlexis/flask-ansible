@@ -1,0 +1,73 @@
+---
+- name: Ensure MariaDB is running
+  systemd:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Set MariaDB root password
+  mysql_user:
+    name: root
+    host: localhost
+    password: "{{ vault_mariadb_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+  no_log: true
+
+- name: Create application database
+  mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create application database user
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "{{ item }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  with_items:
+    - localhost
+    - "{{ groups['webservers'] | map('extract', hostvars, ['ansible_host']) | list }}"
+  no_log: true
+
+- name: Copy MariaDB configuration
+  template:
+    src: mariadb.cnf.j2
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+    mode: '0644'
+  notify: restart mariadb
+
+- name: Set up database backup script
+  template:
+    src: backup-database.sh.j2
+    dest: /usr/local/bin/backup-database.sh
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Set up database backup cron job
+  cron:
+    name: "Backup {{ app_name }} database"
+    hour: "3"
+    minute: "0"
+    job: "/usr/local/bin/backup-database.sh"
+    user: root
+
+- name: Remove anonymous MySQL users
+  mysql_user:
+    name: ''
+    host: "{{ item }}"
+    state: absent
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  with_items:
+    - localhost
+    - "{{ ansible_hostname }}"
+
+- name: Remove MySQL test database
+  mysql_db:
+    name: test
+    state: absent
+    login_unix_socket: /var/run/mysqld/mysqld.sock 

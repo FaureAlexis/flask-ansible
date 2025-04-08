@@ -1,0 +1,68 @@
+upstream flask_app {
+    server {{ gunicorn_bind }};
+}
+
+server {
+    listen 80;
+    server_name {{ server_name }};
+
+{% if ssl_enabled %}
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name {{ server_name }};
+
+    ssl_certificate {{ ssl_cert_path }};
+    ssl_certificate_key {{ ssl_key_path }};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+{% endif %}
+
+    access_log {{ log_path }}/nginx-access.log;
+    error_log {{ log_path }}/nginx-error.log;
+
+    location / {
+        proxy_pass http://flask_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static {
+        alias {{ app_home }}/src/app/static;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    location = /favicon.ico {
+        alias {{ app_home }}/src/app/static/favicon.ico;
+        expires 30d;
+    }
+
+    location = /robots.txt {
+        alias {{ app_home }}/src/app/static/robots.txt;
+        expires 30d;
+    }
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1000;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+} 

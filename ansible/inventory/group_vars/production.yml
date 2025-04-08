@@ -1,0 +1,25 @@
+---
+# Database settings
+db_name: todo
+db_user: todo
+db_password: "{{ vault_db_password }}"
+db_host: localhost
+db_port: 3306
+
+# Flask settings
+flask_secret_key: "{{ vault_flask_secret_key }}"
+flask_env: production
+
+# Nginx settings
+server_name: todo.example.com
+ssl_enabled: true
+ssl_cert_path: /etc/letsencrypt/live/{{ server_name }}/fullchain.pem
+ssl_key_path: /etc/letsencrypt/live/{{ server_name }}/privkey.pem
+
+# Backup settings
+backup_path: /var/backups/{{ app_name }}
+backup_retention_days: 7
+
+# Logging
+log_path: /var/log/{{ app_name }}
+log_level: INFO 

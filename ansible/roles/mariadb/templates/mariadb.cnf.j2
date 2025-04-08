@@ -1,0 +1,45 @@
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/run/mysqld/mysqld.sock
+bind-address=0.0.0.0
+port={{ db_port }}
+
+# Security
+local-infile=0
+symbolic-links=0
+
+# Performance
+key_buffer_size=256M
+max_allowed_packet=64M
+table_open_cache=256
+sort_buffer_size=1M
+read_buffer_size=1M
+read_rnd_buffer_size=4M
+myisam_sort_buffer_size=64M
+thread_cache_size=8
+query_cache_size=16M
+
+# InnoDB
+innodb_buffer_pool_size=1G
+innodb_log_buffer_size=8M
+innodb_file_per_table=1
+innodb_open_files=400
+innodb_io_capacity=400
+innodb_flush_method=O_DIRECT
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet=16M
+
+[mysql]
+no-auto-rehash
+
+[myisamchk]
+key_buffer_size=128M
+sort_buffer_size=128M
+read_buffer=2M
+write_buffer=2M
+
+[mysqlhotcopy]
+interactive-timeout 
