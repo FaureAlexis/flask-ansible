@@ -1,10 +1,27 @@
 ---
 # Database settings
-db_name: todo
-db_user: todo
-db_password: "{{ vault_db_password }}"
-db_host: localhost
-db_port: 3306
+mysql_database: todo
+mysql_user: todo
+mysql_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          <encrypted_password>
+mysql_root_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          <encrypted_root_password>
+
+# Application secrets
+secret_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          <encrypted_secret_key>
+
+# SSL/TLS settings
+ssl_enabled: true
+ssl_cert_path: /etc/letsencrypt/live/todo.example.com/fullchain.pem
+ssl_key_path: /etc/letsencrypt/live/todo.example.com/privkey.pem
+
+# Monitoring settings
+enable_monitoring: true
+prometheus_node_exporter_enabled: true
 
 # Flask settings
 flask_secret_key: "{{ vault_flask_secret_key }}"
@@ -12,9 +29,6 @@ flask_env: production
 
 # Nginx settings
 server_name: todo.example.com
-ssl_enabled: true
-ssl_cert_path: /etc/letsencrypt/live/{{ server_name }}/fullchain.pem
-ssl_key_path: /etc/letsencrypt/live/{{ server_name }}/privkey.pem
 
 # Backup settings
 backup_path: /var/backups/{{ app_name }}

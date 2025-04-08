@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Load environment variables
+source {{ app_home }}/.env
+
+# Set backup directory and retention
+BACKUP_DIR="{{ backup_dir }}"
+RETENTION_DAYS=7
+
+# Create timestamp
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/todo_backup_$TIMESTAMP.sql.gz"
+
+# Create backup
+docker exec {{ app_name }}_db_1 mysqldump -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE | gzip > "$BACKUP_FILE"
+
+# Check if backup was successful
+if [ $? -eq 0 ]; then
+    echo "Backup completed successfully: $BACKUP_FILE"
+else
+    echo "Backup failed!"
+    exit 1
+fi
+
+# Remove old backups
+find "$BACKUP_DIR" -name "todo_backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+# Create backup status file
+echo "Last backup: $(date)" > "$BACKUP_DIR/last_backup.txt" 

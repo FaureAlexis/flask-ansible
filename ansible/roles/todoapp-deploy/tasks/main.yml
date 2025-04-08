@@ -1,0 +1,79 @@
+---
+- name: Create application directory
+  file:
+    path: "{{ app_home }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Copy application files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ app_home }}"
+    mode: '0644'
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+  loop:
+    - app/
+    - db/
+    - nginx/
+    - docker-compose.yml
+
+- name: Create .env file
+  template:
+    src: env.j2
+    dest: "{{ app_home }}/.env"
+    mode: '0600'
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Pull Docker images
+  docker_compose:
+    project_src: "{{ app_home }}"
+    pull: yes
+    state: present
+
+- name: Build and start containers
+  docker_compose:
+    project_src: "{{ app_home }}"
+    build: yes
+    state: present
+  register: output
+
+- name: Show containers status
+  debug:
+    var: output
+
+- name: Wait for application to be ready
+  uri:
+    url: "http://localhost/health"
+    return_content: yes
+  register: result
+  until: result.status == 200
+  retries: 12
+  delay: 5
+
+- name: Create backup directory
+  file:
+    path: "{{ backup_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Install backup script
+  template:
+    src: backup.sh.j2
+    dest: "{{ app_home }}/backup.sh"
+    mode: '0755'
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: Setup backup cron job
+  cron:
+    name: "Backup todo app database"
+    minute: "0"
+    hour: "3"
+    job: "{{ app_home }}/backup.sh"
+    user: "{{ deploy_user }}" 

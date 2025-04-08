@@ -6,6 +6,34 @@ app_group: todo
 app_home: /opt/todo
 app_env: production
 app_port: 8000
+deploy_user: todo
+
+# Backup settings
+backup_dir: /var/backups/todo
+
+# Docker settings
+docker_compose_version: "2.21.0"
+docker_users:
+  - "{{ deploy_user }}"
+
+# Resource limits
+app_memory_limit: "512M"
+app_cpu_limit: "0.5"
+db_memory_limit: "512M"
+db_cpu_limit: "0.5"
+nginx_memory_limit: "256M"
+nginx_cpu_limit: "0.25"
+
+# Network settings
+docker_networks:
+  - name: frontend
+    internal: false
+  - name: backend
+    internal: true
+
+# Logging settings
+log_max_size: "10m"
+log_max_file: "3"
 
 # Python settings
 python_version: "3.9"
