@@ -88,6 +88,23 @@ ansible-flask-todoapp/
 4. Push to the branch
 5. Create a Pull Request
 
+## CI/CD
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+- **On Pull Request:**
+  - Runs tests against MariaDB
+  - Lints code with flake8
+  - Reports test coverage to Codecov
+
+- **On Push to Main:**
+  - Runs all tests
+  - Automatically deploys to production using Ansible
+
+Required secrets for deployment:
+- `SSH_PRIVATE_KEY`: SSH key for server access
+- `HOST`: Target server hostname
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
