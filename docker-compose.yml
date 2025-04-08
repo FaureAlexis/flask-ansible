@@ -65,6 +65,7 @@ services:
         condition: service_healthy
     volumes:
       - ./app/static:/app/static:ro
+    privileged: true
     networks:
       - frontend
     deploy:
@@ -88,4 +89,8 @@ networks:
 
 volumes:
   db_data:
+    driver: local
+  nginx_tmp:
+    driver: local
+  nginx_cache:
     driver: local 

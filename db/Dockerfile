@@ -7,8 +7,8 @@ COPY mariadb.cnf /etc/mysql/conf.d/
 COPY init.sql /docker-entrypoint-initdb.d/
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD mysqladmin ping -h localhost -u healthcheck --password=$MYSQL_PASSWORD || exit 1
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+    CMD mysqladmin ping -h localhost -u root -p${MYSQL_ROOT_PASSWORD} || exit 1
 
 # Set recommended MariaDB configuration
 ENV MYSQL_CHARSET=utf8mb4
