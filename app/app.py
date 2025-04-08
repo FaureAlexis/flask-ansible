@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from models import db, Todo
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -62,7 +63,7 @@ def create_app():
     def health_check():
         try:
             # Test database connection
-            db.session.execute('SELECT 1')
+            db.session.execute(text('SELECT 1'))
             return jsonify({
                 'status': 'healthy',
                 'database': 'connected'
